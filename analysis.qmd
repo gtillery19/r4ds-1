@@ -1,6 +1,77 @@
 ---
-title: "Billboard Hot 100"
+title: "Billboard Analysis"
 format: html
-author: Greta Tillery
+execute:
+  echo: false
 ---
 
+```{r}
+#| message: false
+library(tidyverse)
+```
+
+```{r}
+#| cache: true
+#| message: false
+billboard <- read_csv("data/billboard.csv")
+```
+
+```{r}
+# 1. Reshape and filter to songs that reached the Top 10
+long_data <- billboard |> 
+  pivot_longer(
+    cols = starts_with("wk"), 
+    names_to = "week", 
+    values_to = "rank",
+    values_drop_na = TRUE
+  ) |> 
+  mutate(
+    week = as.integer(readr::parse_number(week)),
+    song_label = paste(artist, track, sep = " - ")
+  ) |> 
+  group_by(artist, track) |> 
+  filter(min(rank) <= 10) |> 
+  ungroup()
+
+# 2. Explicitly define the three notable target songs for the legend
+notable_songs <- c("Madonna - Music", "Lonestar - Amazed", "Creed - Higher")
+
+plot_data <- long_data |> 
+  mutate(highlight_song = ifelse(song_label %in% notable_songs, song_label, NA_character_))
+
+# 3. Build the exact matching plot
+ggplot(plot_data, aes(x = week, y = rank, group = song_label)) +
+  # Background layer: All top-10 songs in light gray
+  geom_line(data = filter(plot_data, is.na(highlight_song)), color = "gray85", alpha = 0.6) +
+  # Foreground layer: Highlighted target songs with thicker lines
+  geom_line(data = filter(plot_data, !is.na(highlight_song)), aes(color = highlight_song), linewidth = 1.2) +
+  scale_y_reverse(limits = c(100, 0), breaks = c(0, 25, 50, 75, 100)) +
+  scale_x_continuous(limits = c(0, 70), breaks = c(0, 20, 40, 60)) +
+  # Match the exact plot colors from the image
+  scale_color_manual(
+    values = c(
+      "Creed - Higher" = "#f8766d",      # Coral/Red
+      "Lonestar - Amazed" = "#00ba38",   # Green
+      "Madonna - Music" = "#619cff"      # Blue
+    )
+  ) +
+  # Add the text annotations onto the chart area
+  annotate("text", x = 11, y = -2, label = "Fastest to #1", color = "#619cff", size = 3.5, fontface = "bold") +
+  annotate("text", x = 44, y = -2, label = "Slowest to #1", color = "#00ba38", size = 3.5, fontface = "bold") +
+  annotate("text", x = 50, y = 5, label = "Longest top-10 run", color = "#f8766d", size = 3.5, fontface = "bold") +
+  theme_minimal() +
+  labs(
+    title = "Top-10 hits follow different chart paths",
+    subtitle = "Each line is one song that reached the top 10 of the Billboard Hot 100",
+    x = "Weeks since entering the chart",
+    y = "Billboard rank",
+    color = "Song",
+    caption = "Source: tidyr::billboard"
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 11),
+    plot.caption = element_text(hjust = 1, size = 9),
+    legend.title = element_text(face = "bold")
+  )
+```

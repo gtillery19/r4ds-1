@@ -1,6 +1,6 @@
 ---
 title: "Billboard Hot 100"
-author: Greta Tillery
 format: html
+author: Greta Tillery
 ---
 
